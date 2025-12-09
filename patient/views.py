@@ -1,63 +1,89 @@
-from django.shortcuts import render,redirect,reverse
-from . import forms,models
-from django.db.models import Sum,Q
-from django.contrib.auth.models import Group
+from django.shortcuts import render, redirect, reverse
+from . import forms
 from django.http import HttpResponseRedirect
-from django.contrib.auth.decorators import login_required,user_passes_test
-from django.conf import settings
-from datetime import date, timedelta
-from django.core.mail import send_mail
-from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required, user_passes_test
 from blood import forms as bforms
-from blood import models as bmodels
+
+# Import services
+from .services import PatientService
+from blood.services import BloodRequestService
 
 
 def patient_signup_view(request):
-    userForm=forms.PatientUserForm()
-    patientForm=forms.PatientForm()
-    mydict={'userForm':userForm,'patientForm':patientForm}
-    if request.method=='POST':
-        userForm=forms.PatientUserForm(request.POST)
-        patientForm=forms.PatientForm(request.POST,request.FILES)
+    """Patient signup view"""
+    userForm = forms.PatientUserForm()
+    patientForm = forms.PatientForm()
+    mydict = {'userForm': userForm, 'patientForm': patientForm}
+    
+    if request.method == 'POST':
+        userForm = forms.PatientUserForm(request.POST)
+        patientForm = forms.PatientForm(request.POST, request.FILES)
+        
         if userForm.is_valid() and patientForm.is_valid():
-            user=userForm.save()
+            # Save user
+            user = userForm.save()
             user.set_password(user.password)
             user.save()
-            patient=patientForm.save(commit=False)
-            patient.user=user
-            patient.bloodgroup=patientForm.cleaned_data['bloodgroup']
-            patient.save()
-            my_patient_group = Group.objects.get_or_create(name='PATIENT')
-            my_patient_group[0].user_set.add(user)
+            
+            # Create patient using service
+            PatientService.create_patient(
+                user=user,
+                age=patientForm.cleaned_data['age'],
+                bloodgroup=patientForm.cleaned_data['bloodgroup'],
+                disease=patientForm.cleaned_data.get('disease'),
+                doctorname=patientForm.cleaned_data.get('doctorname'),
+                address=patientForm.cleaned_data.get('address'),
+                mobile=patientForm.cleaned_data.get('mobile'),
+                profile_pic=patientForm.cleaned_data.get('profile_pic')
+            )
+            
         return HttpResponseRedirect('patientlogin')
-    return render(request,'patient/patientsignup.html',context=mydict)
+    
+    return render(request, 'patient/patientsignup.html', context=mydict)
+
 
 def patient_dashboard_view(request):
-    patient= models.Patient.objects.get(user_id=request.user.id)
-    dict={
-        'requestpending': bmodels.BloodRequest.objects.all().filter(request_by_patient=patient).filter(status='Pending').count(),
-        'requestapproved': bmodels.BloodRequest.objects.all().filter(request_by_patient=patient).filter(status='Approved').count(),
-        'requestmade': bmodels.BloodRequest.objects.all().filter(request_by_patient=patient).count(),
-        'requestrejected': bmodels.BloodRequest.objects.all().filter(request_by_patient=patient).filter(status='Rejected').count(),
-
+    """Patient dashboard with statistics"""
+    patient = PatientService.get_patient_by_user_id(request.user.id)
+    stats = BloodRequestService.get_request_stats_for_patient(patient)
+    
+    context = {
+        'requestpending': stats['pending'],
+        'requestapproved': stats['approved'],
+        'requestmade': stats['total'],
+        'requestrejected': stats['rejected'],
     }
-   
-    return render(request,'patient/patient_dashboard.html',context=dict)
+    
+    return render(request, 'patient/patient_dashboard.html', context=context)
+
 
 def make_request_view(request):
-    request_form=bforms.RequestForm()
-    if request.method=='POST':
-        request_form=bforms.RequestForm(request.POST)
+    """Patient blood request view"""
+    request_form = bforms.RequestForm()
+    
+    if request.method == 'POST':
+        request_form = bforms.RequestForm(request.POST)
         if request_form.is_valid():
-            blood_request=request_form.save(commit=False)
-            blood_request.bloodgroup=request_form.cleaned_data['bloodgroup']
-            patient= models.Patient.objects.get(user_id=request.user.id)
-            blood_request.request_by_patient=patient
-            blood_request.save()
-            return HttpResponseRedirect('my-request')  
-    return render(request,'patient/makerequest.html',{'request_form':request_form})
+            patient = PatientService.get_patient_by_user_id(request.user.id)
+            
+            # Create request using service
+            BloodRequestService.create_request(
+                patient_name=request_form.cleaned_data['patient_name'],
+                patient_age=request_form.cleaned_data['patient_age'],
+                reason=request_form.cleaned_data['reason'],
+                bloodgroup=request_form.cleaned_data['bloodgroup'],
+                unit=request_form.cleaned_data['unit'],
+                request_by_patient=patient
+            )
+            
+            return HttpResponseRedirect('my-request')
+    
+    return render(request, 'patient/makerequest.html', {'request_form': request_form})
+
 
 def my_request_view(request):
-    patient= models.Patient.objects.get(user_id=request.user.id)
-    blood_request=bmodels.BloodRequest.objects.all().filter(request_by_patient=patient)
-    return render(request,'patient/my_request.html',{'blood_request':blood_request})
+    """Patient request history view"""
+    patient = PatientService.get_patient_by_user_id(request.user.id)
+    blood_request = BloodRequestService.get_requests_by_patient(patient)
+    return render(request, 'patient/my_request.html', {'blood_request': blood_request})
+
