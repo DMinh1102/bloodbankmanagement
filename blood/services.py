@@ -7,6 +7,7 @@ from .repositories import StockRepository, BloodRequestRepository
 from .constants import BloodGroup, Status
 from .exceptions import InsufficientBloodStockError, BloodRequestNotFoundError
 from donor.repositories import BloodDonateRepository
+from django.core.cache import cache
 
 
 class BloodStockService:
@@ -133,6 +134,8 @@ class BloodRequestService:
             request_by_donor=request_by_donor,
             request_by_patient=request_by_patient
         )
+        cache.delete_many(["request_total_count", "request_pending_count"])
+        return request
     
     @staticmethod
     def approve_request(request_id: int) -> Tuple[bool, Optional[str]]:
@@ -160,6 +163,8 @@ class BloodRequestService:
         BloodStockService.remove_blood_from_stock(request.bloodgroup, request.unit)
         BloodRequestRepository.update_status(request_id, Status.APPROVED)
         
+        cache.delete_many(["request_pending_count", "request_approved_count"])
+        
         return (True, None)
     
     @staticmethod
@@ -170,6 +175,7 @@ class BloodRequestService:
             raise BloodRequestNotFoundError(request_id)
         
         BloodRequestRepository.update_status(request_id, Status.REJECTED)
+        cache.delete_many(["request_pending_count", "request_rejected_count"])
         return request
     
     @staticmethod

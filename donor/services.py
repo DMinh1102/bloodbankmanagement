@@ -8,6 +8,7 @@ from .repositories import DonorRepository, BloodDonateRepository
 from .models import Donor
 from blood.constants import UserGroup
 from blood.exceptions import DonorNotFoundError
+from django.core.cache import cache
 
 
 class DonorService:
@@ -59,6 +60,9 @@ class DonorService:
         donor_group, created = Group.objects.get_or_create(name=UserGroup.DONOR)
         donor_group.user_set.add(user)
         
+        donor_group.user_set.add(user)
+        
+        cache.delete("donor_total_count")
         return donor
     
     @staticmethod
@@ -99,6 +103,10 @@ class DonorService:
         # Delete user
         user.delete()
         
+        # Delete user
+        user.delete()
+        
+        cache.delete("donor_total_count")
         return True
     
     @staticmethod

@@ -5,6 +5,8 @@ Handles all data access operations for Patient model
 from typing import Optional
 from django.contrib.auth.models import User
 from .models import Patient
+from django.core.cache import cache
+from bloodbankmanagement import settings
 
 
 class PatientRepository:
@@ -76,5 +78,15 @@ class PatientRepository:
     
     @staticmethod
     def count_all() -> int:
-        """Count all patients"""
-        return Patient.objects.count()
+        """Count all patients with caching"""
+        cache_key = "patient_total_count"
+        count = cache.get(cache_key)
+        
+        if count is not None:
+            print("Using cached total patients count")
+            return count
+            
+        print("Fetching total patients count from database")
+        count = Patient.objects.count()
+        cache.set(cache_key, count, timeout=settings.CACHE_TTL)
+        return count

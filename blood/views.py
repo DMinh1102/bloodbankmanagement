@@ -1,3 +1,4 @@
+from django.contrib.auth import logout
 from django.shortcuts import render, redirect, reverse
 from . import forms
 from django.http import HttpResponseRedirect
@@ -257,3 +258,7 @@ def reject_donation_view(request, pk):
     """Admin view to reject a blood donation"""
     BloodDonationService.reject_donation(pk)
     return HttpResponseRedirect('/admin-donation')
+
+def logout_view(request):
+    logout(request)
+    return redirect('adminlogin') # Hoặc tên URL trang login của bạn

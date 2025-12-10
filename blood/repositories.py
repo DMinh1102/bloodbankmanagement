@@ -3,7 +3,11 @@ Repository layer for Blood app
 Handles all data access operations for Stock and BloodRequest models
 """
 from typing import List, Optional, Dict
+
+from django.core.cache import cache
 from django.db.models import Sum
+
+from bloodbankmanagement import settings
 from .models import Stock, BloodRequest
 from .constants import BloodGroup, Status
 from .exceptions import InvalidBloodGroupError
@@ -45,6 +49,7 @@ class StockRepository:
         if stock:
             stock.unit = unit
             stock.save()
+            cache.delete("all_stocks_dict_data")
         return stock
     
     @staticmethod
@@ -68,12 +73,19 @@ class StockRepository:
     @staticmethod
     def get_all_stocks_dict() -> Dict[str, Stock]:
         """Get all stocks as a dictionary keyed by blood group"""
+        cache_key = "all_stocks_dict"
         stocks = {}
-        for bloodgroup in BloodGroup.ALL_GROUPS:
-            stock = StockRepository.get_by_bloodgroup(bloodgroup)
-            if stock:
-                stocks[bloodgroup] = stock
-        return stocks
+
+        stocks = cache.get(cache_key)
+        if stocks is not None:
+            print("Using cached stocks")
+            return stocks
+
+        print("Fetching stocks from database")
+        stocks = Stock.objects.all()
+        stocks_dict = {stock.bloodgroup: stock for stock in stocks}
+        cache.set(cache_key, stocks_dict, timeout=settings.CACHE_TTL)
+        return stocks_dict
     
     @staticmethod
     def initialize_stocks() -> None:
@@ -137,13 +149,33 @@ class BloodRequestRepository:
     
     @staticmethod
     def count_by_status(status: str) -> int:
-        """Count requests by status"""
-        return BloodRequestRepository.get_by_status(status).count()
+        """Count requests by status with caching"""
+        cache_key = f"request_{status.lower()}_count"
+        count = cache.get(cache_key)
+        
+        if count is not None:
+            print(f"Using cached {status} requests count")
+            return count
+            
+        print(f"Fetching {status} requests count from database")
+        count = BloodRequestRepository.get_by_status(status).count()
+        cache.set(cache_key, count, timeout=settings.CACHE_TTL)
+        return count
     
     @staticmethod
     def count_all() -> int:
-        """Count all blood requests"""
-        return BloodRequest.objects.count()
+        """Count all blood requests with caching"""
+        cache_key = "request_total_count"
+        count = cache.get(cache_key)
+        
+        if count is not None:
+            print("Using cached total requests count")
+            return count
+            
+        print("Fetching total requests count from database")
+        count = BloodRequest.objects.count()
+        cache.set(cache_key, count, timeout=settings.CACHE_TTL)
+        return count
     
     @staticmethod
     def create_request(patient_name: str, patient_age: int, reason: str, 

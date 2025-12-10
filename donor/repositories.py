@@ -5,6 +5,8 @@ Handles all data access operations for Donor and BloodDonate models
 from typing import Optional
 from django.contrib.auth.models import User
 from .models import Donor, BloodDonate
+from django.core.cache import cache
+from bloodbankmanagement import settings
 from blood.constants import Status
 
 
@@ -73,8 +75,18 @@ class DonorRepository:
     
     @staticmethod
     def count_all() -> int:
-        """Count all donors"""
-        return Donor.objects.count()
+        """Count all donors with caching"""
+        cache_key = "donor_total_count"
+        count = cache.get(cache_key)
+        
+        if count is not None:
+            print("Using cached total donors count")
+            return count
+            
+        print("Fetching total donors count from database")
+        count = Donor.objects.count()
+        cache.set(cache_key, count, timeout=settings.CACHE_TTL)
+        return count
 
 
 class BloodDonateRepository:

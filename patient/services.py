@@ -8,6 +8,7 @@ from .repositories import PatientRepository
 from .models import Patient
 from blood.constants import UserGroup
 from blood.exceptions import PatientNotFoundError
+from django.core.cache import cache
 
 
 class PatientService:
@@ -63,6 +64,9 @@ class PatientService:
         patient_group, created = Group.objects.get_or_create(name=UserGroup.PATIENT)
         patient_group.user_set.add(user)
         
+        patient_group.user_set.add(user)
+        
+        cache.delete("patient_total_count")
         return patient
     
     @staticmethod
@@ -104,6 +108,10 @@ class PatientService:
         # Delete user
         user.delete()
         
+        # Delete user
+        user.delete()
+        
+        cache.delete("patient_total_count")
         return True
     
     @staticmethod
