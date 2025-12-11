@@ -8,9 +8,13 @@ from blood import forms as bforms
 from .services import PatientService
 from blood.services import BloodRequestService
 
+# Import rate limiting decorators
+from blood.decorators import patient_action_limit, strict_limit
 
+
+@strict_limit
 def patient_signup_view(request):
-    """Patient signup view"""
+    """Patient signup view (rate limited to prevent spam)"""
     userForm = forms.PatientUserForm()
     patientForm = forms.PatientForm()
     mydict = {'userForm': userForm, 'patientForm': patientForm}
@@ -57,8 +61,9 @@ def patient_dashboard_view(request):
     return render(request, 'patient/patient_dashboard.html', context=context)
 
 
+@patient_action_limit
 def make_request_view(request):
-    """Patient blood request view"""
+    """Patient blood request view (rate limited: 5 per minute)"""
     request_form = bforms.RequestForm()
     
     if request.method == 'POST':

@@ -86,20 +86,33 @@ DATABASES = {
     }
 }
 
-#Redis cache
+# Cache configuration for rate limiting
+# Using LocMemCache (in-memory) for development
+# For production, use Redis for better performance and persistence
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1", # Database số 1 của Redis
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "bloodbank-ratelimit",
         "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "IGNORE_EXCEPTIONS": True, # Nếu Redis chết, web vẫn chạy (lấy DB)
+            "MAX_ENTRIES": 10000,
         }
     }
 }
 
-# (Tuỳ chọn) Thiết lập thời gian sống mặc định của Cache (giây)
-CACHE_TTL = 60 * 15 # 15 phút
+# If you have Redis installed, uncomment below for better performance:
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
+        }
+    }
+}
+
+# Cache TTL (Time To Live)
+CACHE_TTL = 60 * 15  # 15 minutes
 
 
 # Password validation

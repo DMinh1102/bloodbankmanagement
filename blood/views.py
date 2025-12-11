@@ -16,7 +16,11 @@ from patient.services import PatientService
 from .constants import BloodGroup, UserGroup
 from .exceptions import InsufficientBloodStockError
 
+# Import rate limiting decorators
+from .decorators import public_endpoint_limit, admin_action_limit, strict_limit
 
+
+@public_endpoint_limit
 def home_view(request):
     """Homepage view - initializes blood stock if needed"""
     # Initialize stock if needed
@@ -48,6 +52,7 @@ def afterlogin_view(request):
 
 
 @login_required(login_url='adminlogin')
+@admin_action_limit
 def admin_dashboard_view(request):
     """Admin dashboard with blood stock and statistics"""
     stocks = BloodStockService.get_all_stocks_dict()
@@ -70,6 +75,7 @@ def admin_dashboard_view(request):
 
 
 @login_required(login_url='adminlogin')
+@admin_action_limit
 def admin_blood_view(request):
     """Admin blood stock management view"""
     stocks = BloodStockService.get_all_stocks_dict()
@@ -226,8 +232,9 @@ def admin_donation_view(request):
 
 
 @login_required(login_url='adminlogin')
+@strict_limit
 def update_approve_status_view(request, pk):
-    """Admin view to approve a blood request"""
+    """Admin view to approve a blood request (rate limited to prevent abuse)"""
     success, error_message = BloodRequestService.approve_request(pk)
     
     requests = BloodRequestService.get_pending_requests()
@@ -240,22 +247,25 @@ def update_approve_status_view(request, pk):
 
 
 @login_required(login_url='adminlogin')
+@strict_limit
 def update_reject_status_view(request, pk):
-    """Admin view to reject a blood request"""
+    """Admin view to reject a blood request (rate limited to prevent abuse)"""
     BloodRequestService.reject_request(pk)
     return HttpResponseRedirect('/admin-request')
 
 
 @login_required(login_url='adminlogin')
+@strict_limit
 def approve_donation_view(request, pk):
-    """Admin view to approve a blood donation"""
+    """Admin view to approve a blood donation (rate limited to prevent abuse)"""
     BloodDonationService.approve_donation(pk)
     return HttpResponseRedirect('/admin-donation')
 
 
 @login_required(login_url='adminlogin')
+@strict_limit
 def reject_donation_view(request, pk):
-    """Admin view to reject a blood donation"""
+    """Admin view to reject a blood donation (rate limited to prevent abuse)"""
     BloodDonationService.reject_donation(pk)
     return HttpResponseRedirect('/admin-donation')
 

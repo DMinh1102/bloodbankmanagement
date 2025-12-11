@@ -78,10 +78,10 @@ class StockRepository:
 
         stocks = cache.get(cache_key)
         if stocks is not None:
-            print("Using cached stocks")
+            # print("Using cached stocks")  # Disabled for performance
             return stocks
 
-        print("Fetching stocks from database")
+        # print("Fetching stocks from database")  # Disabled for performance
         stocks = Stock.objects.all()
         stocks_dict = {stock.bloodgroup: stock for stock in stocks}
         cache.set(cache_key, stocks_dict, timeout=settings.CACHE_TTL)
@@ -154,10 +154,10 @@ class BloodRequestRepository:
         count = cache.get(cache_key)
         
         if count is not None:
-            print(f"Using cached {status} requests count")
+            # print(f"Using cached {status} requests count")  # Disabled for performance
             return count
             
-        print(f"Fetching {status} requests count from database")
+        # print(f"Fetching {status} requests count from database")  # Disabled for performance
         count = BloodRequestRepository.get_by_status(status).count()
         cache.set(cache_key, count, timeout=settings.CACHE_TTL)
         return count
@@ -169,10 +169,10 @@ class BloodRequestRepository:
         count = cache.get(cache_key)
         
         if count is not None:
-            print("Using cached total requests count")
+            # print("Using cached total requests count")  # Disabled for performance
             return count
             
-        print("Fetching total requests count from database")
+        # print("Fetching total requests count from database")  # Disabled for performance
         count = BloodRequest.objects.count()
         cache.set(cache_key, count, timeout=settings.CACHE_TTL)
         return count

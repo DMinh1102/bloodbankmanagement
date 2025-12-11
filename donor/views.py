@@ -8,9 +8,13 @@ from blood import forms as bforms
 from .services import DonorService, DonationService
 from blood.services import BloodRequestService
 
+# Import rate limiting decorators
+from blood.decorators import donor_action_limit, strict_limit
 
+
+@strict_limit
 def donor_signup_view(request):
-    """Donor signup view"""
+    """Donor signup view (rate limited to prevent spam)"""
     userForm = forms.DonorUserForm()
     donorForm = forms.DonorForm()
     mydict = {'userForm': userForm, 'donorForm': donorForm}
@@ -53,8 +57,9 @@ def donor_dashboard_view(request):
     return render(request, 'donor/donor_dashboard.html', context=context)
 
 
+@donor_action_limit
 def donate_blood_view(request):
-    """Donor blood donation view"""
+    """Donor blood donation view (rate limited: 5 per minute)"""
     donation_form = forms.DonationForm()
     
     if request.method == 'POST':
@@ -83,8 +88,9 @@ def donation_history_view(request):
     return render(request, 'donor/donation_history.html', {'donations': donations})
 
 
+@donor_action_limit
 def make_request_view(request):
-    """Donor blood request view"""
+    """Donor blood request view (rate limited: 5 per minute)"""
     request_form = bforms.RequestForm()
     
     if request.method == 'POST':
