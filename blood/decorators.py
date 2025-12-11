@@ -134,39 +134,39 @@ def bloodbank_ratelimit(rate='10/m', method='ALL', key='ip', block=True):
 def public_endpoint_limit(view_func):
     """
     Rate limit for public endpoints (e.g., blood stock query).
-    Limit: 20 requests per minute per IP
+    Limit: 200 requests per minute per IP
     """
-    return bloodbank_ratelimit(rate='20/m', key='ip')(view_func)
+    return bloodbank_ratelimit(rate='200/m', key='ip')(view_func)
 
 
 def donor_action_limit(view_func):
     """
     Rate limit for donor actions (e.g., blood donation, blood request).
-    Limit: 5 requests per minute per user
+    Limit: 50 requests per minute per user
     """
-    return bloodbank_ratelimit(rate='5/m', key='user_or_ip')(view_func)
+    return bloodbank_ratelimit(rate='50/m', key='user_or_ip')(view_func)
 
 
 def patient_action_limit(view_func):
     """
     Rate limit for patient actions (e.g., blood request).
-    Limit: 5 requests per minute per user
+    Limit: 50 requests per minute per user
     """
-    return bloodbank_ratelimit(rate='5/m', key='user_or_ip')(view_func)
+    return bloodbank_ratelimit(rate='50/m', key='user_or_ip')(view_func)
 
 
 def admin_action_limit(view_func):
     """
     Rate limit for admin actions (more lenient).
-    Limit: 30 requests per minute per user
+    Limit: 300 requests per minute per user
     """
-    return bloodbank_ratelimit(rate='30/m', key='user')(view_func)
+    return bloodbank_ratelimit(rate='300/m', key='user')(view_func)
 
 
 def strict_limit(view_func):
     """
     Strict rate limit for sensitive operations.
-    Limit: 3 requests per minute per IP
+    Limit: 30 requests per minute per IP
     """
-    return bloodbank_ratelimit(rate='3/m', key='ip')(view_func)
+    return bloodbank_ratelimit(rate='30/m', key='ip')(view_func)
 
