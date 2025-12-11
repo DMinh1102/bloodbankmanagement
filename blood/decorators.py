@@ -12,6 +12,12 @@ from django.shortcuts import render
 import time
 import hashlib
 
+# ============================================================
+# TOGGLE THIS FLAG TO DISABLE RATE LIMITING FOR TESTING
+# ============================================================
+DISABLE_RATE_LIMITING = True  # Set to False to re-enable rate limiting
+# ============================================================
+
 
 def get_client_identifier(request, key_type='ip'):
     """
@@ -86,6 +92,11 @@ def bloodbank_ratelimit(rate='10/m', method='ALL', key='ip', block=True):
     def decorator(view_func):
         @wraps(view_func)
         def wrapped_view(request, *args, **kwargs):
+            # Skip rate limiting if disabled
+            if DISABLE_RATE_LIMITING:
+                request.limited = False
+                return view_func(request, *args, **kwargs)
+            
             # Check if method matches
             if method != 'ALL' and request.method != method:
                 return view_func(request, *args, **kwargs)

@@ -20,6 +20,8 @@ from blood import views
 urlpatterns = [
     path('admin/', admin.site.urls),
 
+    # API endpoints for Postman testing
+    path('api/', include('blood.api_urls')),
     
     path('donor/',include('donor.urls')),
     path('patient/',include('patient.urls')),
