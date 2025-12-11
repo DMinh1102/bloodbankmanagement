@@ -99,14 +99,14 @@ CACHES = {
     }
 }
 
-# If you have Redis installed, uncomment below for better performance:
+# If you have Redis installed and running, uncomment below for better performance:
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "IGNORE_EXCEPTIONS": True,
+         "BACKEND": "django_redis.cache.RedisCache",
+         "LOCATION": "redis://127.0.0.1:6379/1",
+         "OPTIONS": {
+             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+             "IGNORE_EXCEPTIONS": True,
         }
     }
 }
