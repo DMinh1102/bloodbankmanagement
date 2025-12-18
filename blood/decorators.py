@@ -6,122 +6,36 @@ of blood bank system endpoints using Django's built-in cache framework.
 """
 
 from functools import wraps
-from django.core.cache import cache
-from django.http import HttpResponse
 from django.shortcuts import render
-import time
-import hashlib
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit import ALL
 
-
-def get_client_identifier(request, key_type='ip'):
+def bloodbank_ratelimit(rate='10/m', method=ALL, key='ip', block=True):
     """
-    Get unique identifier for rate limiting.
+    Rate limit decorator for blood bank views using django-ratelimit.
     
     Args:
-        request: Django request object
-        key_type: 'ip', 'user', or 'user_or_ip'
-    
-    Returns:
-        Unique identifier string
-    """
-    if key_type == 'user' and request.user.is_authenticated:
-        return f"user:{request.user.id}"
-    elif key_type == 'user_or_ip':
-        if request.user.is_authenticated:
-            return f"user:{request.user.id}"
-        return f"ip:{get_client_ip(request)}"
-    else:  # ip
-        return f"ip:{get_client_ip(request)}"
-
-
-def get_client_ip(request):
-    """Get client IP address from request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
-    return ip
-
-
-def parse_rate(rate):
-    """
-    Parse rate string into count and period.
-    
-    Args:
-        rate: String like '10/m', '100/h', '1000/d'
-    
-    Returns:
-        Tuple of (count, period_seconds)
-    """
-    count, period = rate.split('/')
-    count = int(count)
-    
-    period_map = {
-        's': 1,
-        'm': 60,
-        'h': 3600,
-        'd': 86400,
-    }
-    
-    period_seconds = period_map.get(period, 60)
-    return count, period_seconds
-
-
-def bloodbank_ratelimit(rate='10/m', method='ALL', key='ip', block=True):
-    """
-    Rate limit decorator for blood bank views.
-    
-    Args:
-        rate: Rate limit string (e.g., '10/m' = 10 per minute, '100/h' = 100 per hour)
-        method: HTTP method to limit ('GET', 'POST', 'ALL')
+        rate: Rate limit string (e.g., '10/m' = 10 per minute)
+        method: HTTP method to limit ('GET', 'POST', 'ALL' or list)
         key: Key to use for rate limiting:
-            - 'ip': Limit by IP address (for anonymous users)
+            - 'ip': Limit by IP address
             - 'user': Limit by user ID (for authenticated users)
             - 'user_or_ip': Use user ID if authenticated, else IP
-        block: If True, block requests that exceed limit
+        block: If True, block requests that exceed limit and show error page
     """
-    max_requests, period = parse_rate(rate)
-    
     def decorator(view_func):
         @wraps(view_func)
+        @ratelimit(key=key, rate=rate, method=method, block=False)
         def wrapped_view(request, *args, **kwargs):
-            # Check if method matches
-            if method != 'ALL' and request.method != method:
-                return view_func(request, *args, **kwargs)
-            
-            # Get client identifier
-            client_id = get_client_identifier(request, key)
-            cache_key = f"ratelimit:{view_func.__name__}:{client_id}"
-            
-            # Get current request count
-            current_time = time.time()
-            request_data = cache.get(cache_key, {'count': 0, 'reset_time': current_time + period})
-            
-            # Reset if period expired
-            if current_time >= request_data['reset_time']:
-                request_data = {'count': 0, 'reset_time': current_time + period}
-            
-            # Check if limit exceeded
-            if request_data['count'] >= max_requests:
-                if block:
-                    # Mark request as limited
-                    request.limited = True
-                    
-                    # Return custom rate limit error page
-                    context = {
-                        'error_title': 'Too Many Requests',
-                        'error_message': 'You have exceeded the rate limit. Please try again later.',
-                        'retry_after': '1 minute'
-                    }
-                    return render(request, 'blood/rate_limit_error.html', context, status=429)
-            
-            # Increment counter
-            request_data['count'] += 1
-            cache.set(cache_key, request_data, period)
-            
-            # Mark request as not limited
-            request.limited = False
+            # Check if limit exceeded (set by django-ratelimit with block=False)
+            if getattr(request, 'limited', False) and block:
+                # Return custom rate limit error page
+                context = {
+                    'error_title': 'Too Many Requests',
+                    'error_message': 'You have exceeded the rate limit. Please try again later.',
+                    'retry_after': '1 minute'
+                }
+                return render(request, 'blood/rate_limit_error.html', context, status=429)
             
             return view_func(request, *args, **kwargs)
         
