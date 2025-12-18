@@ -4,6 +4,8 @@ Contains business logic for donor management and donations
 """
 from typing import Optional, Dict
 from django.contrib.auth.models import User, Group
+from django.db import transaction
+
 from .repositories import DonorRepository, BloodDonateRepository
 from .models import Donor
 from blood.constants import UserGroup
@@ -44,6 +46,7 @@ class DonorService:
         return donor
     
     @staticmethod
+    @transaction.atomic
     def create_donor(user: User, bloodgroup: str, address: str, 
                     mobile: str, profile_pic=None) -> Donor:
         """Create a new donor and assign to DONOR group"""
@@ -66,6 +69,7 @@ class DonorService:
         return donor
     
     @staticmethod
+    @transaction.atomic
     def update_donor(donor_id: int, user_data: Dict = None, donor_data: Dict = None) -> Donor:
         """
         Update donor and associated user information
@@ -92,6 +96,7 @@ class DonorService:
         return DonorRepository.get_by_id(donor_id)
     
     @staticmethod
+    @transaction.atomic
     def delete_donor(donor_id: int) -> bool:
         """Delete a donor and associated user"""
         donor = DonorService.get_donor_by_id(donor_id)
@@ -119,6 +124,7 @@ class DonationService:
     """Service for managing blood donations by donors"""
     
     @staticmethod
+    @transaction.atomic
     def create_donation(donor: Donor, disease: str, age: int, 
                        bloodgroup: str, unit: int):
         """Create a new blood donation"""

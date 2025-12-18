@@ -3,6 +3,9 @@ Service layer for Blood app
 Contains business logic for blood stock management, requests, and donations
 """
 from typing import Dict, Optional, Tuple
+
+from django.db import transaction
+
 from .repositories import StockRepository, BloodRequestRepository
 from .constants import BloodGroup, Status
 from .exceptions import InsufficientBloodStockError, BloodRequestNotFoundError
@@ -121,11 +124,12 @@ class BloodRequestService:
         }
     
     @staticmethod
+    @transaction.atomic
     def create_request(patient_name: str, patient_age: int, reason: str,
                       bloodgroup: str, unit: int, request_by_donor=None,
                       request_by_patient=None):
         """Create a new blood request"""
-        return BloodRequestRepository.create_request(
+        request = BloodRequestRepository.create_request(
             patient_name=patient_name,
             patient_age=patient_age,
             reason=reason,
@@ -138,6 +142,7 @@ class BloodRequestService:
         return request
     
     @staticmethod
+    @transaction.atomic
     def approve_request(request_id: int) -> Tuple[bool, Optional[str]]:
         """
         Approve a blood request and update stock
@@ -168,6 +173,7 @@ class BloodRequestService:
         return (True, None)
     
     @staticmethod
+    @transaction.atomic
     def reject_request(request_id: int):
         """Reject a blood request"""
         request = BloodRequestRepository.get_by_id(request_id)
@@ -214,6 +220,7 @@ class BloodDonationService:
         )
     
     @staticmethod
+    @transaction.atomic
     def approve_donation(donation_id: int):
         """Approve a blood donation and add to stock"""
         donation = BloodDonateRepository.get_by_id(donation_id)
@@ -230,6 +237,7 @@ class BloodDonationService:
         return donation
     
     @staticmethod
+    @transaction.atomic
     def reject_donation(donation_id: int):
         """Reject a blood donation"""
         donation = BloodDonateRepository.get_by_id(donation_id)
