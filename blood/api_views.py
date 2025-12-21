@@ -6,18 +6,37 @@ import time
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
 
 from .services import BloodStockService, BloodRequestService, BloodDonationService
 from donor.services import DonorService
 from patient.services import PatientService
 
+# ============================================================
+# TOGGLE THIS FLAG TO ENABLE/DISABLE API CACHING
+# ============================================================
+USE_CACHE = True  # Set to True to enable caching
+# ============================================================
+
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def blood_stock_list(request):
-    """Get all blood stock - API endpoint"""
+    """Get all blood stock - API endpoint with optional caching"""
     start_time = time.time()
     
+    # Try to get from cache first (only if USE_CACHE is True)
+    if USE_CACHE:
+        cache_key = 'api_blood_stock_list_v1'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data:
+            # Return cached data with updated timing
+            cached_data['query_time_ms'] = round((time.time() - start_time) * 1000, 2)
+            cached_data['from_cache'] = True
+            return JsonResponse(cached_data)
+    
+    # Cache miss or caching disabled - query database
     stocks = BloodStockService.get_all_stocks()
     
     data = {
@@ -32,9 +51,14 @@ def blood_stock_list(request):
             }
             for stock in stocks
         ],
-        'query_time_ms': round((time.time() - start_time) * 1000, 2)
+        'from_cache': False
     }
     
+    # Store in cache for 5 minutes (only if USE_CACHE is True)
+    if USE_CACHE:
+        cache.set(cache_key, data, 300)
+    
+    data['query_time_ms'] = round((time.time() - start_time) * 1000, 2)
     return JsonResponse(data)
 
 

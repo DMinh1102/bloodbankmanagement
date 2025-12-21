@@ -6,16 +6,35 @@ import time
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
 
 from .services import DonorService, DonationService
+
+# ============================================================
+# TOGGLE THIS FLAG TO ENABLE/DISABLE API CACHING
+# ============================================================
+USE_CACHE = True  # Set to True to enable caching
+# ============================================================
 
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def donors_list(request):
-    """Get all donors - API endpoint"""
+    """Get all donors - API endpoint with optional caching"""
     start_time = time.time()
     
+    # Try to get from cache first (only if USE_CACHE is True)
+    if USE_CACHE:
+        cache_key = 'api_donors_list_v1'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data:
+            # Return cached data with updated timing
+            cached_data['query_time_ms'] = round((time.time() - start_time) * 1000, 2)
+            cached_data['from_cache'] = True
+            return JsonResponse(cached_data)
+    
+    # Cache miss or caching disabled - query database
     donors = DonorService.get_all_donors()
     
     data = {
@@ -33,9 +52,14 @@ def donors_list(request):
             }
             for donor in donors
         ],
-        'query_time_ms': round((time.time() - start_time) * 1000, 2)
+        'from_cache': False
     }
     
+    # Store in cache for 5 minutes (only if USE_CACHE is True)
+    if USE_CACHE:
+        cache.set(cache_key, data, 300)
+    
+    data['query_time_ms'] = round((time.time() - start_time) * 1000, 2)
     return JsonResponse(data)
 
 
