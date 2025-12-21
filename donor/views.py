@@ -42,7 +42,7 @@ def donor_signup_view(request):
     
     return render(request, 'donor/donorsignup.html', context=mydict)
 
-
+@login_required(login_url="donorlogin")
 def donor_dashboard_view(request):
     """Donor dashboard with statistics"""
     donor = DonorService.get_donor_by_user_id(request.user.id)
@@ -56,7 +56,7 @@ def donor_dashboard_view(request):
     }
     return render(request, 'donor/donor_dashboard.html', context=context)
 
-
+@login_required(login_url="donorlogin")
 @donor_action_limit
 def donate_blood_view(request):
     """Donor blood donation view (rate limited: 5 per minute)"""
@@ -80,14 +80,14 @@ def donate_blood_view(request):
     
     return render(request, 'donor/donate_blood.html', {'donation_form': donation_form})
 
-
+@login_required(login_url="donorlogin")
 def donation_history_view(request):
     """Donor donation history view"""
     donor = DonorService.get_donor_by_user_id(request.user.id)
     donations = DonationService.get_donation_history(donor)
     return render(request, 'donor/donation_history.html', {'donations': donations})
 
-
+@login_required(login_url="donorlogin")
 @donor_action_limit
 def make_request_view(request):
     """Donor blood request view (rate limited: 5 per minute)"""
@@ -112,7 +112,7 @@ def make_request_view(request):
     
     return render(request, 'donor/makerequest.html', {'request_form': request_form})
 
-
+@login_required(login_url="donorlogin")
 def request_history_view(request):
     """Donor request history view"""
     donor = DonorService.get_donor_by_user_id(request.user.id)

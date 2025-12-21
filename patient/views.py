@@ -45,7 +45,7 @@ def patient_signup_view(request):
     
     return render(request, 'patient/patientsignup.html', context=mydict)
 
-
+@login_required(login_url="patientlogin")
 def patient_dashboard_view(request):
     """Patient dashboard with statistics"""
     patient = PatientService.get_patient_by_user_id(request.user.id)
@@ -60,7 +60,7 @@ def patient_dashboard_view(request):
     
     return render(request, 'patient/patient_dashboard.html', context=context)
 
-
+@login_required(login_url="patientlogin")
 @patient_action_limit
 def make_request_view(request):
     """Patient blood request view (rate limited: 5 per minute)"""
@@ -85,7 +85,7 @@ def make_request_view(request):
     
     return render(request, 'patient/makerequest.html', {'request_form': request_form})
 
-
+@login_required(login_url="patientlogin")
 def my_request_view(request):
     """Patient request history view"""
     patient = PatientService.get_patient_by_user_id(request.user.id)

@@ -6,8 +6,6 @@ of blood bank system endpoints using Django's built-in cache framework.
 """
 
 from functools import wraps
-from django.core.cache import cache
-from django.http import HttpResponse
 from django.shortcuts import render
 import time
 import hashlib
@@ -55,42 +53,17 @@ def parse_rate(rate):
     Parse rate string into count and period.
     
     Args:
-        rate: String like '10/m', '100/h', '1000/d'
-    
-    Returns:
-        Tuple of (count, period_seconds)
-    """
-    count, period = rate.split('/')
-    count = int(count)
-    
-    period_map = {
-        's': 1,
-        'm': 60,
-        'h': 3600,
-        'd': 86400,
-    }
-    
-    period_seconds = period_map.get(period, 60)
-    return count, period_seconds
-
-
-def bloodbank_ratelimit(rate='10/m', method='ALL', key='ip', block=True):
-    """
-    Rate limit decorator for blood bank views.
-    
-    Args:
-        rate: Rate limit string (e.g., '10/m' = 10 per minute, '100/h' = 100 per hour)
-        method: HTTP method to limit ('GET', 'POST', 'ALL')
+        rate: Rate limit string (e.g., '10/m' = 10 per minute)
+        method: HTTP method to limit ('GET', 'POST', 'ALL' or list)
         key: Key to use for rate limiting:
-            - 'ip': Limit by IP address (for anonymous users)
+            - 'ip': Limit by IP address
             - 'user': Limit by user ID (for authenticated users)
             - 'user_or_ip': Use user ID if authenticated, else IP
-        block: If True, block requests that exceed limit
+        block: If True, block requests that exceed limit and show error page
     """
-    max_requests, period = parse_rate(rate)
-    
     def decorator(view_func):
         @wraps(view_func)
+        @ratelimit(key=key, rate=rate, method=method, block=False)
         def wrapped_view(request, *args, **kwargs):
             # Skip rate limiting if disabled
             if DISABLE_RATE_LIMITING:
@@ -126,13 +99,6 @@ def bloodbank_ratelimit(rate='10/m', method='ALL', key='ip', block=True):
                         'retry_after': '1 minute'
                     }
                     return render(request, 'blood/rate_limit_error.html', context, status=429)
-            
-            # Increment counter
-            request_data['count'] += 1
-            cache.set(cache_key, request_data, period)
-            
-            # Mark request as not limited
-            request.limited = False
             
             return view_func(request, *args, **kwargs)
         

@@ -4,6 +4,8 @@ Contains business logic for patient management
 """
 from typing import Optional, Dict
 from django.contrib.auth.models import User, Group
+from django.db import transaction
+
 from .repositories import PatientRepository
 from .models import Patient
 from blood.constants import UserGroup
@@ -44,6 +46,7 @@ class PatientService:
         return patient
     
     @staticmethod
+    @transaction.atomic
     def create_patient(user: User, age: int, bloodgroup: str, disease: str,
                       doctorname: str, address: str, mobile: str, 
                       profile_pic=None) -> Patient:
@@ -70,6 +73,7 @@ class PatientService:
         return patient
     
     @staticmethod
+    @transaction.atomic
     def update_patient(patient_id: int, user_data: Dict = None, 
                       patient_data: Dict = None) -> Patient:
         """
@@ -97,6 +101,7 @@ class PatientService:
         return PatientRepository.get_by_id(patient_id)
     
     @staticmethod
+    @transaction.atomic
     def delete_patient(patient_id: int) -> bool:
         """Delete a patient and associated user"""
         patient = PatientService.get_patient_by_id(patient_id)
