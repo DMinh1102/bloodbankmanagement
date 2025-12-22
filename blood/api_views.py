@@ -11,6 +11,7 @@ from django.core.cache import cache
 from .services import BloodStockService, BloodRequestService, BloodDonationService
 from donor.services import DonorService
 from patient.services import PatientService
+from .decorators import strict_limit
 
 # ============================================================
 # TOGGLE THIS FLAG TO ENABLE/DISABLE API CACHING
@@ -21,6 +22,7 @@ USE_CACHE = True  # Set to True to enable caching
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@strict_limit
 def blood_stock_list(request):
     """Get all blood stock - API endpoint with optional caching"""
     start_time = time.time()

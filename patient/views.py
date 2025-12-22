@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import render, redirect, reverse
 from . import forms
 from django.http import HttpResponseRedirect
@@ -13,6 +14,7 @@ from blood.decorators import patient_action_limit, strict_limit
 
 
 @strict_limit
+@transaction.atomic
 def patient_signup_view(request):
     """Patient signup view (rate limited to prevent spam)"""
     userForm = forms.PatientUserForm()

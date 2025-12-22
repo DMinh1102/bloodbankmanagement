@@ -86,27 +86,24 @@ DATABASES = {
     }
 }
 
-# Cache configuration for rate limiting
-# Using LocMemCache (in-memory) for development
-# For production, use Redis for better performance and persistence
+# Cache configuration
+# 'default': Redis (Production-ready, persistent)
+# 'locmem': Local Memory (Development/Backup)
 CACHES = {
     "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # Set to False to raise errors if Redis is down, ensuring we know if rate limiting fails.
+            "IGNORE_EXCEPTIONS": False,
+        }
+    },
+    "locmem": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "bloodbank-ratelimit",
         "OPTIONS": {
             "MAX_ENTRIES": 10000,
-        }
-    }
-}
-
-# If you have Redis installed and running, uncomment below for better performance:
-CACHES = {
-    "default": {
-         "BACKEND": "django_redis.cache.RedisCache",
-         "LOCATION": "redis://127.0.0.1:6379/1",
-         "OPTIONS": {
-             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-             "IGNORE_EXCEPTIONS": True,
         }
     }
 }

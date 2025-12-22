@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import render, redirect, reverse
 from . import forms
 from django.http import HttpResponseRedirect
@@ -13,6 +14,7 @@ from blood.decorators import donor_action_limit, strict_limit
 
 
 @strict_limit
+@transaction.atomic
 def donor_signup_view(request):
     """Donor signup view (rate limited to prevent spam)"""
     userForm = forms.DonorUserForm()

@@ -63,8 +63,6 @@ class DonorService:
         donor_group, created = Group.objects.get_or_create(name=UserGroup.DONOR)
         donor_group.user_set.add(user)
         
-        donor_group.user_set.add(user)
-        
         cache.delete("donor_total_count")
         return donor
     
