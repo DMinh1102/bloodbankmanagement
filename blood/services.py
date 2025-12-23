@@ -12,6 +12,14 @@ from .exceptions import InsufficientBloodStockError, BloodRequestNotFoundError
 from donor.repositories import BloodDonateRepository
 from django.core.cache import cache
 
+# Import async email tasks
+from blood.tasks import (
+    send_blood_request_approved_email,
+    send_blood_request_rejected_email,
+    send_donation_approved_email,
+    send_donation_rejected_email,
+)
+
 
 class BloodStockService:
     """Service for managing blood stock inventory"""
@@ -170,6 +178,15 @@ class BloodRequestService:
         
         cache.delete_many(["request_pending_count", "request_approved_count"])
         
+        # Send async email notification (non-blocking)
+        if request.request_by_patient and hasattr(request.request_by_patient, 'user'):
+            send_blood_request_approved_email.delay(
+                patient_email=request.request_by_patient.user.email,
+                patient_name=request.patient_name,
+                bloodgroup=request.bloodgroup,
+                unit=request.unit
+            )
+        
         return (True, None)
     
     @staticmethod
@@ -182,6 +199,17 @@ class BloodRequestService:
         
         BloodRequestRepository.update_status(request_id, Status.REJECTED)
         cache.delete_many(["request_pending_count", "request_rejected_count"])
+        
+        # Send async email notification (non-blocking)
+        if request.request_by_patient and hasattr(request.request_by_patient, 'user'):
+            send_blood_request_rejected_email.delay(
+                patient_email=request.request_by_patient.user.email,
+                patient_name=request.patient_name,
+                bloodgroup=request.bloodgroup,
+                unit=request.unit,
+                reason="Insufficient blood stock or other criteria not met"
+            )
+        
         return request
     
     @staticmethod
@@ -234,6 +262,15 @@ class BloodDonationService:
         # Update donation status
         BloodDonateRepository.update_status(donation_id, Status.APPROVED)
         
+        # Send async email notification (non-blocking)
+        if hasattr(donation.donor, 'user'):
+            send_donation_approved_email.delay(
+                donor_email=donation.donor.user.email,
+                donor_name=donation.donor.get_name,
+                bloodgroup=donation.bloodgroup,
+                unit=donation.unit
+            )
+        
         return donation
     
     @staticmethod
@@ -246,4 +283,14 @@ class BloodDonationService:
             raise BloodDonationNotFoundError(donation_id)
         
         BloodDonateRepository.update_status(donation_id, Status.REJECTED)
+        
+        # Send async email notification (non-blocking)
+        if hasattr(donation.donor, 'user'):
+            send_donation_rejected_email.delay(
+                donor_email=donation.donor.user.email,
+                donor_name=donation.donor.get_name,
+                bloodgroup=donation.bloodgroup,
+                reason=donation.disease if donation.disease != "Nothing" else ""
+            )
+        
         return donation

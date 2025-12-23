@@ -199,3 +199,13 @@ SIMPLE_JWT = {
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
+
+# Celery configuration (uses existing Redis)
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/2'  # Use DB 2 for Celery
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/2'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
