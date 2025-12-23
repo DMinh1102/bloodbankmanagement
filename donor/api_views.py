@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.core.cache import cache
 
 from .services import DonorService, DonationService
+from blood.auth import jwt_required
 
 # ============================================================
 # TOGGLE THIS FLAG TO ENABLE/DISABLE API CACHING
@@ -19,6 +20,7 @@ USE_CACHE = True  # Set to True to enable caching
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def donors_list(request):
     """Get all donors - API endpoint with optional caching"""
     start_time = time.time()
@@ -65,6 +67,7 @@ def donors_list(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def donor_detail(request, pk):
     """Get specific donor details - API endpoint"""
     start_time = time.time()
@@ -100,6 +103,7 @@ def donor_detail(request, pk):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def donor_donations(request, pk):
     """Get donation history for a specific donor - API endpoint"""
     start_time = time.time()

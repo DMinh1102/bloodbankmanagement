@@ -4,10 +4,17 @@ Centralized API routing for all JSON endpoints
 """
 from django.urls import path
 from blood import api_views as blood_api
+from blood import auth
 from donor import api_views as donor_api
 from patient import api_views as patient_api
 
 urlpatterns = [
+    # Authentication endpoints
+    path('auth/login/', auth.api_login, name='api-login'),
+    path('auth/register/', auth.api_register, name='api-register'),
+    path('auth/refresh/', auth.api_token_refresh, name='api-token-refresh'),
+    path('auth/me/', auth.api_me, name='api-me'),
+    
     # Blood Stock APIs
     path('blood-stock/', blood_api.blood_stock_list, name='api-blood-stock-list'),
     path('blood-stock/<str:bloodgroup>/', blood_api.blood_stock_detail, name='api-blood-stock-detail'),

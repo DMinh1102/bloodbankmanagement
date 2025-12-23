@@ -10,6 +10,7 @@ from django.core.cache import cache
 
 from .services import PatientService
 from blood.services import BloodRequestService
+from blood.auth import jwt_required
 
 # ============================================================
 # TOGGLE THIS FLAG TO ENABLE/DISABLE API CACHING
@@ -20,6 +21,7 @@ USE_CACHE = True  # Set to True to enable caching
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def patients_list(request):
     """Get all patients - API endpoint with optional caching"""
     start_time = time.time()
@@ -69,6 +71,7 @@ def patients_list(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def patient_detail(request, pk):
     """Get specific patient details - API endpoint"""
     start_time = time.time()
@@ -107,6 +110,7 @@ def patient_detail(request, pk):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def patient_requests(request, pk):
     """Get blood request history for a specific patient - API endpoint"""
     start_time = time.time()

@@ -12,6 +12,7 @@ from .services import BloodStockService, BloodRequestService, BloodDonationServi
 from donor.services import DonorService
 from patient.services import PatientService
 from .decorators import strict_limit
+from .auth import jwt_required
 
 # ============================================================
 # TOGGLE THIS FLAG TO ENABLE/DISABLE API CACHING
@@ -22,6 +23,7 @@ USE_CACHE = True  # Set to True to enable caching
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 @strict_limit
 def blood_stock_list(request):
     """Get all blood stock - API endpoint with optional caching"""
@@ -66,6 +68,7 @@ def blood_stock_list(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def blood_stock_detail(request, bloodgroup):
     """Get specific blood group stock - API endpoint"""
     start_time = time.time()
@@ -94,6 +97,7 @@ def blood_stock_detail(request, bloodgroup):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def blood_requests_list(request):
     """Get all blood requests - API endpoint"""
     start_time = time.time()
@@ -125,6 +129,7 @@ def blood_requests_list(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def blood_requests_pending(request):
     """Get pending blood requests - API endpoint"""
     start_time = time.time()
@@ -156,6 +161,7 @@ def blood_requests_pending(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def blood_request_detail(request, pk):
     """Get specific blood request - API endpoint"""
     start_time = time.time()
@@ -191,6 +197,7 @@ def blood_request_detail(request, pk):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def donations_list(request):
     """Get all blood donations - API endpoint"""
     start_time = time.time()
@@ -222,6 +229,7 @@ def donations_list(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def donations_pending(request):
     """Get pending blood donations - API endpoint"""
     start_time = time.time()
@@ -254,6 +262,7 @@ def donations_pending(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@jwt_required
 def system_stats(request):
     """Get overall system statistics - API endpoint"""
     start_time = time.time()
