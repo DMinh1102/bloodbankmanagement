@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - redis # Bắt buộc phải có Redis mới chạy
+
+  redis:
+    image: "redis:alpine" # Dùng bản Redis nhẹ nhất
