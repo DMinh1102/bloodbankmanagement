@@ -11,6 +11,9 @@ from .models import Donor
 from blood.constants import UserGroup
 from blood.exceptions import DonorNotFoundError
 from django.core.cache import cache
+from django.conf import settings
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', 60 * 15)
 
 
 class DonorService:
@@ -19,7 +22,12 @@ class DonorService:
     @staticmethod
     def get_all_donors():
         """Get all donors"""
-        return DonorRepository.get_all()
+        key = "donor_all"
+        data = cache.get(key)
+        if data is None:
+            data = list(DonorRepository.get_all())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_donor_by_id(donor_id: int) -> Optional[Donor]:
@@ -63,7 +71,7 @@ class DonorService:
         donor_group, created = Group.objects.get_or_create(name=UserGroup.DONOR)
         donor_group.user_set.add(user)
         
-        cache.delete("donor_total_count")
+        cache.delete_many(["donor_total_count", "donor_all"])
         return donor
     
     @staticmethod
@@ -91,6 +99,8 @@ class DonorService:
         if donor_data:
             DonorRepository.update_donor(donor_id, **donor_data)
         
+        cache.delete_many(["donor_total_count", "donor_all"])
+        
         return DonorRepository.get_by_id(donor_id)
     
     @staticmethod
@@ -105,17 +115,19 @@ class DonorService:
         
         # Delete user
         user.delete()
-        
-        # Delete user
-        user.delete()
-        
-        cache.delete("donor_total_count")
+
+        cache.delete_many(["donor_total_count", "donor_all"])
         return True
     
     @staticmethod
     def get_total_donors_count() -> int:
         """Get total count of donors"""
-        return DonorRepository.count_all()
+        key = "donor_total_count"
+        data = cache.get(key)
+        if data is None:
+            data = DonorRepository.count_all()
+            cache.set(key, data, CACHE_TTL)
+        return data
 
 
 class DonationService:
