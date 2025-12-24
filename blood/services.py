@@ -11,6 +11,9 @@ from .constants import BloodGroup, Status
 from .exceptions import InsufficientBloodStockError, BloodRequestNotFoundError
 from donor.repositories import BloodDonateRepository
 from django.core.cache import cache
+from django.conf import settings
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', 60 * 15)
 
 
 class BloodStockService:
@@ -24,39 +27,90 @@ class BloodStockService:
     @staticmethod
     def get_all_stocks():
         """Get all stock records"""
-        return StockRepository.get_all()
+        key = "stock_all"
+        data = cache.get(key)
+        if data is None:
+            data = list(StockRepository.get_all())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_stock_by_bloodgroup(bloodgroup: str):
         """Get stock for a specific blood group"""
-        return StockRepository.get_by_bloodgroup(bloodgroup)
+        key = f"stock_detail_{bloodgroup}"
+        data = cache.get(key)
+        if data is None:
+            data = StockRepository.get_by_bloodgroup(bloodgroup)
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_all_stocks_dict() -> Dict:
         """Get all stocks as a dictionary for dashboard display"""
-        return StockRepository.get_all_stocks_dict()
+        key = "stock_dict_all"
+        data = cache.get(key)
+        if data is None:
+            data = StockRepository.get_all_stocks_dict()
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_total_units() -> int:
         """Get total units of all blood in stock"""
-        return StockRepository.get_total_units()
+        key = "stock_total_units"
+        data = cache.get(key)
+        if data is None:
+            data = StockRepository.get_total_units()
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def update_stock_unit(bloodgroup: str, unit: int):
         """Update stock unit for a blood group"""
-        return StockRepository.update_unit(bloodgroup, unit)
+        result = StockRepository.update_unit(bloodgroup, unit)
+        
+        # Invalidate related caches
+        keys_to_delete = [
+            f"stock_detail_{bloodgroup}",
+            "stock_dict_all",
+            "stock_total_units",
+            "api_system_stats"
+        ]
+        cache.delete_many(keys_to_delete)
+        return result
     
     @staticmethod
     def add_blood_to_stock(bloodgroup: str, unit: int):
         """Add blood units to stock (for approved donations)"""
-        return StockRepository.increment_unit(bloodgroup, unit)
+        result = StockRepository.increment_unit(bloodgroup, unit)
+        
+        # Invalidate related caches
+        keys_to_delete = [
+            f"stock_detail_{bloodgroup}",
+            "stock_dict_all",
+            "stock_total_units",
+            "api_system_stats"
+        ]
+        cache.delete_many(keys_to_delete)
+        return result
     
     @staticmethod
     def remove_blood_from_stock(bloodgroup: str, unit: int):
         """Remove blood units from stock (for approved requests)"""
         stock = StockRepository.get_by_bloodgroup(bloodgroup)
         if stock and stock.unit >= unit:
-            return StockRepository.decrement_unit(bloodgroup, unit)
+            result = StockRepository.decrement_unit(bloodgroup, unit)
+            
+            # Invalidate related caches
+            keys_to_delete = [
+                f"stock_detail_{bloodgroup}",
+                "stock_dict_all",
+                "stock_all",
+                "stock_total_units",
+                "api_system_stats"
+            ]
+            cache.delete_many(keys_to_delete)
+            return result
         else:
             available = stock.unit if stock else 0
             raise InsufficientBloodStockError(bloodgroup, unit, available)
@@ -79,17 +133,32 @@ class BloodRequestService:
     @staticmethod
     def get_all_requests():
         """Get all blood requests"""
-        return BloodRequestRepository.get_all()
+        key = "req_all"
+        data = cache.get(key)
+        if data is None:
+            data = list(BloodRequestRepository.get_all())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_pending_requests():
         """Get all pending requests"""
-        return BloodRequestRepository.get_pending_requests()
+        key = "req_pending"
+        data = cache.get(key)
+        if data is None:
+            data = list(BloodRequestRepository.get_pending_requests())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_request_history():
         """Get all non-pending requests (approved/rejected)"""
-        return BloodRequestRepository.get_non_pending_requests()
+        key = "req_history"
+        data = cache.get(key)
+        if data is None:
+            data = list(BloodRequestRepository.get_non_pending_requests())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_requests_by_donor(donor):
@@ -138,7 +207,14 @@ class BloodRequestService:
             request_by_donor=request_by_donor,
             request_by_patient=request_by_patient
         )
-        cache.delete_many(["request_total_count", "request_pending_count"])
+        cache.delete_many([
+            "req_all", 
+            "req_pending", 
+            "req_count_total",
+            "api_system_stats",
+            "request_total_count", # keeping old keys if used elsewhere, but mainly using new naming
+            "request_pending_count"
+        ])
         return request
     
     @staticmethod
@@ -168,9 +244,37 @@ class BloodRequestService:
         BloodStockService.remove_blood_from_stock(request.bloodgroup, request.unit)
         BloodRequestRepository.update_status(request_id, Status.APPROVED)
         
-        cache.delete_many(["request_pending_count", "request_approved_count"])
+        cache.delete_many([
+            "req_all", 
+            "req_pending",
+            "req_history",
+            "req_count_approved", 
+            "req_count_total",
+            "api_system_stats",
+            "request_pending_count", 
+            "req_all", 
+            "req_pending",
+            "req_history",
+            "req_count_approved", 
+            "req_count_total",
+            "api_system_stats",
+            "request_pending_count", 
+            "request_approved_count",
+            f"req_detail_{request_id}"
+        ])
         
         return (True, None)
+
+    @staticmethod
+    def get_request_by_id(request_id):
+        """Get request by ID"""
+        key = f"req_detail_{request_id}"
+        data = cache.get(key)
+        if data is None:
+            data = BloodRequestRepository.get_by_id(request_id)
+            if data:
+                cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     @transaction.atomic
@@ -181,18 +285,36 @@ class BloodRequestService:
             raise BloodRequestNotFoundError(request_id)
         
         BloodRequestRepository.update_status(request_id, Status.REJECTED)
-        cache.delete_many(["request_pending_count", "request_rejected_count"])
+        cache.delete_many([
+            "req_all", 
+            "req_pending",
+            "req_history",
+            "req_count_total",
+            "api_system_stats",
+            "request_pending_count", 
+            "request_rejected_count"
+        ])
         return request
     
     @staticmethod
     def get_total_requests_count() -> int:
         """Get total count of all requests"""
-        return BloodRequestRepository.count_all()
+        key = "req_count_total"
+        data = cache.get(key)
+        if data is None:
+            data = BloodRequestRepository.count_all()
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_approved_requests_count() -> int:
         """Get count of approved requests"""
-        return BloodRequestRepository.count_by_status(Status.APPROVED)
+        key = "req_count_approved"
+        data = cache.get(key)
+        if data is None:
+            data = BloodRequestRepository.count_by_status(Status.APPROVED)
+            cache.set(key, data, CACHE_TTL)
+        return data
 
 
 class BloodDonationService:
@@ -201,8 +323,24 @@ class BloodDonationService:
     @staticmethod
     def get_all_donations():
         """Get all blood donations"""
-        return BloodDonateRepository.get_all()
+        key = "donation_all"
+        data = cache.get(key)
+        if data is None:
+            data = list(BloodDonateRepository.get_all())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
+    @staticmethod
+    def get_pending_donations():
+        """Get all pending donations"""
+        key = "donation_pending"
+        data = cache.get(key)
+        if data is None:
+            from .constants import Status
+            data = list(BloodDonateRepository.get_all().filter(status=Status.PENDING))
+            cache.set(key, data, CACHE_TTL)
+        return data
+
     @staticmethod
     def get_donations_by_donor(donor):
         """Get all donations by a specific donor"""
@@ -211,13 +349,16 @@ class BloodDonationService:
     @staticmethod
     def create_donation(donor, disease: str, age: int, bloodgroup: str, unit: int):
         """Create a new blood donation"""
-        return BloodDonateRepository.create_donation(
+        donation = BloodDonateRepository.create_donation(
             donor=donor,
             disease=disease,
             age=age,
             bloodgroup=bloodgroup,
             unit=unit
         )
+        
+        cache.delete_many(["donation_all", "donation_pending", "api_system_stats"])
+        return donation
     
     @staticmethod
     @transaction.atomic
@@ -234,6 +375,8 @@ class BloodDonationService:
         # Update donation status
         BloodDonateRepository.update_status(donation_id, Status.APPROVED)
         
+        cache.delete_many(["donation_all", "donation_pending", "api_system_stats"])
+        
         return donation
     
     @staticmethod
@@ -246,4 +389,5 @@ class BloodDonationService:
             raise BloodDonationNotFoundError(donation_id)
         
         BloodDonateRepository.update_status(donation_id, Status.REJECTED)
+        cache.delete_many(["donation_all", "donation_pending"])
         return donation

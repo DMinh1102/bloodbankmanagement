@@ -11,6 +11,9 @@ from .models import Patient
 from blood.constants import UserGroup
 from blood.exceptions import PatientNotFoundError
 from django.core.cache import cache
+from django.conf import settings
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', 60 * 15)
 
 
 class PatientService:
@@ -19,7 +22,12 @@ class PatientService:
     @staticmethod
     def get_all_patients():
         """Get all patients"""
-        return PatientRepository.get_all()
+        key = "patient_all"
+        data = cache.get(key)
+        if data is None:
+            data = list(PatientRepository.get_all())
+            cache.set(key, data, CACHE_TTL)
+        return data
     
     @staticmethod
     def get_patient_by_id(patient_id: int) -> Optional[Patient]:
@@ -69,7 +77,7 @@ class PatientService:
         
         patient_group.user_set.add(user)
         
-        cache.delete("patient_total_count")
+        cache.delete_many(["patient_total_count", "patient_all"])
         return patient
     
     @staticmethod
@@ -98,6 +106,8 @@ class PatientService:
         if patient_data:
             PatientRepository.update_patient(patient_id, **patient_data)
         
+        cache.delete_many(["patient_total_count", "patient_all"])
+        
         return PatientRepository.get_by_id(patient_id)
     
     @staticmethod
@@ -112,14 +122,16 @@ class PatientService:
         
         # Delete user
         user.delete()
-        
-        # Delete user
-        user.delete()
-        
-        cache.delete("patient_total_count")
+
+        cache.delete_many(["patient_total_count", "patient_all"])
         return True
     
     @staticmethod
     def get_total_patients_count() -> int:
         """Get total count of patients"""
-        return PatientRepository.count_all()
+        key = "patient_total_count"
+        data = cache.get(key)
+        if data is None:
+            data = PatientRepository.count_all()
+            cache.set(key, data, CACHE_TTL)
+        return data
